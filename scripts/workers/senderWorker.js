@@ -1,43 +1,36 @@
-var connectionEstablishedMap = new Map() // [user.id] => localDataChannel
 var connectionRequestQueue = [] // Queue(Array) of connectionRequest
-var pendingMessagesQueueMap = new Map() // [user.id] => Array of messages
 
 onmessage = (event) => {
-  const { to, message } = event.data
-
-  // 1) If connection established, send message through datachannel
-  const localDataChannel = connectionEstablishedMap.get(to.id)
-
-  if (localDataChannel !== undefined) {
-    localDataChannel.send(message)
-    return
-  }
-
-  // 2) If connection NOT established
-  // 2.1) If present in pending queue, then append
-  const pendingQueue = pendingMessagesQueueMap.get(to.id)
-
-  if (pendingQueue !== undefined) {
-    pendingQueue.push(message)
-    return
-  }
-
-  // 2.2) If NOT present in queue, then create new connection request
-  pendingMessagesQueueMap.set(to.id, [])
-  pendingMessagesQueueMap.get(to.id).push(message)
+  const { to } = event.data
 
   connectionRequestQueue.push(
-    new ConnectionRequest(to.id, (localDataChannel) => {
-      const pendingQueue = pendingMessagesQueueMap.get(to.id)
-      while (pendingQueue.length) {
-        localDataChannel.send(pendingQueue.shift())
-      }
-
-      pendingMessagesQueueMap.delete(to.id)
-      connectionEstablishedMap.set(to.id, localDataChannel)
+    new ConnectionRequest(to, (localDataChannel) => {
+      postMessage({
+        to,
+        channel: localDataChannel,
+      })
     })
   )
 }
+
+// Run Queue in Regular Intervals
+var connectionRequestQueueTemp = [] // Temp Queue used while removing ESTABLISHED connection requests
+setInterval(() => {
+  while (connectionRequestQueue.length) {
+    const popped = connectionRequestQueue.shift()
+
+    if (popped.isEstablished()) continue
+
+    connectionRequestQueueTemp.push(popped)
+    popped.process()
+  }
+
+  // Swap
+  ;[connectionRequestQueue, connectionRequestQueueTemp] = [
+    connectionRequestQueueTemp,
+    connectionRequestQueue,
+  ]
+}, 1000 * 10)
 
 class ConnectionRequest {
   _state = null // "PENDING" | "REGISTERED" | "ESTABLISHED"
