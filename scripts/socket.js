@@ -1,5 +1,5 @@
 var socketConn = null
-const socketUrl = "ws://localhost:8080"
+const socketUrl = "ws://localhost:8081"
 
 function initialiseSocket() {
   if (currentUser === 0) {
@@ -15,7 +15,7 @@ function initialiseSocket() {
 
   socketConn.onmessage = function (e) {
     console.log(e.data)
-    onSocketMessageReceive(e.data)
+    onSocketMessageReceive(JSON.parse(e.data))
   }
 
   socketConn.onclose = function (e) {
@@ -32,30 +32,28 @@ function sendSendRegister(from) {
   )
 }
 
-function sendSendRequest(from, to) {
+function sendSendRequest(to) {
   socketConn.send(
     JSON.stringify({
       type: "FROM_SENDER_SENDER_REQUESTING",
-      from: from,
       to: to,
     })
   )
 }
 
-function sendReceiverReady(from) {
+function sendReceiverReady() {
   socketConn.send(
     JSON.stringify({
       type: "FROM_RECEIVER_RECEIVER_READY",
-      from: from,
     })
   )
 }
 
-function sendSenderSDP(from, sdp) {
+function sendSenderSDP(to, sdp) {
   socketConn.send(
     JSON.stringify({
       type: "FROM_SENDER_SENDER_SDP",
-      from: from,
+      to: to,
       sdp: sdp,
     })
   )
@@ -66,15 +64,15 @@ function sendReceiverSDP(from, sdp) {
     JSON.stringify({
       type: "FROM_RECEIVER_RECEIVER_SDP",
       from: from,
+      sdp: sdp,
     })
   )
 }
 
-function sendSenderSent(from, to) {
+function sendSenderSent(to) {
   socketConn.send(
     JSON.stringify({
       type: "FROM_SENDER_SENT",
-      from: from,
       to: to,
     })
   )
@@ -84,17 +82,17 @@ function onSocketMessageReceive(socketMessage) {
   switch (socketMessage.type) {
     case "FOR_RECEIVER_SENDER_REQUESTING":
       /*
-        socketMessage = {type, from}
+        socketMessage = {type}
       */
-      sendReceiverReady(currentUser)
+      sendReceiverReady()
       break
 
     case "FOR_SENDER_RECEIVER_READY":
       /*
         socketMessage = {type, to}
       */
-      generateSenderSDP().then((sdp) => {
-        sendSenderSDP(sdp)
+      generateSenderSDP(socketMessage.to).then((sdp) => {
+        sendSenderSDP(socketMessage.to, sdp)
       })
 
       break
@@ -103,16 +101,20 @@ function onSocketMessageReceive(socketMessage) {
       /*
         socketMessage = {type, from, sdp}
       */
-      generateReceiverSDP().then((sdp) => {
-        sendReceiverSDP(sdp)
-      })
+      generateReceiverSDP(socketMessage.from, socketMessage.sdp).then(
+        (rsdp) => {
+          sendReceiverSDP(socketMessage.from, rsdp)
+        }
+      )
       break
 
     case "FOR_SENDER_RECEIVER_SDP":
       /*
         socketMessage = {type, to, sdp}
       */
-      acceptAndSendMessage(socketMessage)
+      acceptAndSendMessage(socketMessage.to, socketMessage.sdp).then(() =>
+        sendSenderSent(socketMessage.to)
+      )
       break
   }
 }
@@ -125,6 +127,6 @@ async function generateReceiverSDP() {
   return "_SDP_RECEIVER"
 }
 
-function socketRequestSend(to) {
-  sendSendRequest(currentUser, to)
+async function acceptAndSendMessage(to, sdp) {
+  console.log("Establish WebRTC Connection and send message.")
 }
