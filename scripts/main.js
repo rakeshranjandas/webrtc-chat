@@ -21,6 +21,7 @@ function chooseUser() {
   $("#user-id-div").hide()
 
   popuplateSendButtons()
+  initialiseSocket()
 }
 
 function popuplateSendButtons() {
@@ -49,6 +50,7 @@ function sendToUser(toUser) {
   sendInput.val("")
 
   // Send Action
+  sender.sendMessage(toUser, message)
 
   appendToSent(toUser, message)
   scrollToBottom($("#send-div-sent-area"))
