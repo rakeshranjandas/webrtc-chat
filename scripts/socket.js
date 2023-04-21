@@ -131,8 +131,8 @@ function generateSenderSDP(to, onSuccessSDPCreate) {
   )
   senderChannel.onopen = () => {
     console.log("Sender Channel open")
-    senderChannel.send("MESSAGE FROM " + currentUser)
     ChannelCache.set(to, senderChannel)
+    sender.sendPendingMessagesInChannel(to)
   }
   senderChannel.onclose = () => console.log("Sender Channel close")
   senderChannel.onmessage = ({ data }) => console.log("Sender received:", data)
