@@ -103,9 +103,13 @@ function onSocketMessageReceive(socketMessage) {
       /*
         socketMessage = {type, from, sdp}
       */
-      generateReceiverSDP(socketMessage.sdp, (receiverSDP) => {
-        sendReceiverSDP(socketMessage.from, receiverSDP)
-      })
+      generateReceiverSDP(
+        socketMessage.from,
+        socketMessage.sdp,
+        (receiverSDP) => {
+          sendReceiverSDP(socketMessage.from, receiverSDP)
+        }
+      )
       break
 
     case "FOR_SENDER_RECEIVER_SDP":
@@ -145,7 +149,7 @@ function generateSenderSDP(to, onSuccessSDPCreate) {
   senderConn.createOffer().then((o) => senderConn.setLocalDescription(o))
 }
 
-function generateReceiverSDP(senderSDP, onSuccessRSDPCreate) {
+function generateReceiverSDP(from, senderSDP, onSuccessRSDPCreate) {
   const receiverConn = new RTCPeerConnection()
   receiverConn.onicecandidate = (e) => {
     if (e.candidate) onSuccessRSDPCreate(receiverConn.localDescription)
@@ -155,8 +159,10 @@ function generateReceiverSDP(senderSDP, onSuccessRSDPCreate) {
     const receiveChannel = channel
     receiveChannel.onopen = () => console.log("Receiver Channel open")
     receiveChannel.onclose = () => console.log("Receiver Channel close")
-    receiveChannel.onmessage = ({ data }) =>
+    receiveChannel.onmessage = ({ data }) => {
       console.log("Receiver received:", data)
+      receiver.receiveMessage(from, data)
+    }
 
     receiverConn.channel = receiveChannel
   }
