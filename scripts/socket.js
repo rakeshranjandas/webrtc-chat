@@ -157,7 +157,10 @@ function generateReceiverSDP(from, senderSDP, onSuccessRSDPCreate) {
 
   receiverConn.ondatachannel = ({ channel }) => {
     const receiveChannel = channel
-    receiveChannel.onopen = () => console.log("Receiver Channel open")
+    receiveChannel.onopen = () => {
+      console.log("Receiver Channel open")
+      saveInChannelCache(from, receiveChannel)
+    }
     receiveChannel.onclose = () => console.log("Receiver Channel close")
     receiveChannel.onmessage = ({ data }) => {
       console.log("Receiver received:", data)
