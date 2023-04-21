@@ -1,5 +1,7 @@
 var socketConn = null
 const socketUrl = "ws://localhost:8081"
+const connChannelLabelPref = "channel"
+const senderConnChannelMap = new Map()
 
 function initialiseSocket() {
   if (currentUser === 0) {
@@ -91,8 +93,8 @@ function onSocketMessageReceive(socketMessage) {
       /*
         socketMessage = {type, to}
       */
-      generateSenderSDP(socketMessage.to).then((sdp) => {
-        sendSenderSDP(socketMessage.to, sdp)
+      generateSenderSDP(socketMessage.to, (senderSDP) => {
+        sendSenderSDP(socketMessage.to, senderSDP)
       })
 
       break
@@ -101,11 +103,9 @@ function onSocketMessageReceive(socketMessage) {
       /*
         socketMessage = {type, from, sdp}
       */
-      generateReceiverSDP(socketMessage.from, socketMessage.sdp).then(
-        (rsdp) => {
-          sendReceiverSDP(socketMessage.from, rsdp)
-        }
-      )
+      generateReceiverSDP(socketMessage.sdp, (receiverSDP) => {
+        sendReceiverSDP(socketMessage.from, receiverSDP)
+      })
       break
 
     case "FOR_SENDER_RECEIVER_SDP":
@@ -119,14 +119,59 @@ function onSocketMessageReceive(socketMessage) {
   }
 }
 
-async function generateSenderSDP() {
-  return "_SDP_SENDER_"
+function generateSenderSDP(to, onSuccessSDPCreate) {
+  const senderConn = new RTCPeerConnection()
+
+  senderConn.onicecandidate = (e) => {
+    if (e.candidate) onSuccessSDPCreate(senderConn.localDescription)
+  }
+
+  const senderChannel = senderConn.createDataChannel(
+    connChannelLabelPref + "_" + to.toString()
+  )
+  senderChannel.onopen = () => {
+    console.log("Sender Channel open")
+    senderChannel.send("MESSAGE FROM " + currentUser)
+    ChannelCache.set(to, senderChannel)
+  }
+  senderChannel.onclose = () => console.log("Sender Channel close")
+  senderChannel.onmessage = ({ data }) => console.log("Sender received:", data)
+
+  senderConnChannelMap.set(to, {
+    conn: senderConn,
+    channel: senderChannel,
+  })
+
+  senderConn.createOffer().then((o) => senderConn.setLocalDescription(o))
 }
 
-async function generateReceiverSDP() {
-  return "_SDP_RECEIVER"
+function generateReceiverSDP(senderSDP, onSuccessRSDPCreate) {
+  const receiverConn = new RTCPeerConnection()
+  receiverConn.onicecandidate = (e) => {
+    if (e.candidate) onSuccessRSDPCreate(receiverConn.localDescription)
+  }
+
+  receiverConn.ondatachannel = ({ channel }) => {
+    const receiveChannel = channel
+    receiveChannel.onopen = () => console.log("Receiver Channel open")
+    receiveChannel.onclose = () => console.log("Receiver Channel close")
+    receiveChannel.onmessage = ({ data }) =>
+      console.log("Receiver received:", data)
+
+    receiverConn.channel = receiveChannel
+  }
+
+  receiverConn
+    .setRemoteDescription(senderSDP)
+    .then(() => receiverConn.createAnswer())
+    .then((a) => receiverConn.setLocalDescription(a))
 }
 
 async function acceptAndSendMessage(to, sdp) {
-  console.log("Establish WebRTC Connection and send message.")
+  const { conn: senderConn, channel: senderChannel } =
+    senderConnChannelMap.get(to)
+
+  senderConn.setRemoteDescription(sdp).then(() => {
+    console.log("Establish WebRTC Connection and send message.")
+  })
 }
