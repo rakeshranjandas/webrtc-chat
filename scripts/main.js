@@ -29,7 +29,7 @@ function popuplateSendButtons() {
   for (let i = 1; i <= numberOfUsers; i++) {
     if (i == currentUser) continue
 
-    buttonStr += `<button onclick="sendToUser(${i})">Send to ${i}</button>`
+    buttonStr += `<button onclick="sendToUser('${i}')">Send to ${i}</button>`
   }
 
   $("#send-div-send-buttons-p").html(buttonStr)
