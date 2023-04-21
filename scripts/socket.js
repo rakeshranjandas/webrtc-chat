@@ -1,7 +1,7 @@
 var socketConn = null
 const socketUrl = "ws://localhost:8081"
 const connChannelLabelPref = "channel"
-const senderConnChannelMap = new Map()
+const senderConnMap = new Map()
 
 function initialiseSocket() {
   if (currentUser === 0) {
@@ -135,16 +135,17 @@ function generateSenderSDP(to, onSuccessSDPCreate) {
   )
   senderChannel.onopen = () => {
     console.log("Sender Channel open")
-    ChannelCache.set(to, senderChannel)
+    saveInChannelCache(to, senderChannel)
     sender.sendPendingMessagesInChannel(to)
   }
   senderChannel.onclose = () => console.log("Sender Channel close")
-  senderChannel.onmessage = ({ data }) => console.log("Sender received:", data)
+  senderChannel.onmessage = ({ data }) => {
+    console.log("Sender received:", data)
 
-  senderConnChannelMap.set(to, {
-    conn: senderConn,
-    channel: senderChannel,
-  })
+    receiver.receiveMessage(to, data) // This is used when Receiver channel is re-used
+  }
+
+  senderConnMap.set(to, senderConn)
 
   senderConn.createOffer().then((o) => senderConn.setLocalDescription(o))
 }
@@ -177,8 +178,7 @@ function generateReceiverSDP(from, senderSDP, onSuccessRSDPCreate) {
 }
 
 async function acceptAndSendMessage(to, sdp) {
-  const { conn: senderConn, channel: senderChannel } =
-    senderConnChannelMap.get(to)
+  const senderConn = senderConnMap.get(to)
 
   senderConn.setRemoteDescription(sdp).then(() => {
     console.log("Establish WebRTC Connection and send message.")
