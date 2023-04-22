@@ -2,10 +2,12 @@ const sender = {
   _pendingQueueMap: new Map(),
 
   sendMessage: function (to, message) {
+    message.type = "sent"
+
     const channel = ChannelCache.get(to)
     if (channel !== undefined) {
       console.log("sending message ", to, message)
-      channel.send(message)
+      channel.send(JSON.stringify(message))
       return
     }
 
@@ -32,7 +34,7 @@ const sender = {
     while (pendingQueue.length) {
       let message = pendingQueue.shift()
       console.log("sending message after channel first open", to, message)
-      channel.send(message)
+      channel.send(JSON.stringify(message))
     }
 
     this._pendingQueueMap.delete(to)

@@ -41,7 +41,13 @@ function scrollToBottom(divToScroll) {
 
 function sendToUser(toUser) {
   const sendInput = $("#send-div-send-input")
-  const message = sendInput.val()
+  const messageText = sendInput.val()
+  const messageId = toUser + "_" + new Date().getTime().toString()
+
+  const message = {
+    id: messageId,
+    text: messageText,
+  }
 
   if (message === "") {
     alert("Empty message")
@@ -57,7 +63,7 @@ function sendToUser(toUser) {
 }
 
 function appendToSent(toUser, message) {
-  const str = `<p>To ${toUser}: ${message}</p>`
+  const str = `<p class="sent-p" data-id="${message.id}"><label>To ${toUser}<span class="sent-ack">&check;</span></label>: ${message.text}</p>`
   $("#send-div-sent-area").append(str)
 }
 
@@ -67,6 +73,12 @@ function receivedFromUser(fromUser, message) {
 }
 
 function appendToReceived(fromUser, message) {
-  const str = `<p>From ${fromUser}: ${message}</p>`
+  const str = `<p class="received-p"><label>From ${fromUser}</label>: ${message.text}</p>`
   $("#receive-div-received").append(str)
+}
+
+function receivedSuccessAck(messageId) {
+  $(".sent-p[data-id=" + messageId + "]")
+    .find(".sent-ack")
+    .show()
 }
