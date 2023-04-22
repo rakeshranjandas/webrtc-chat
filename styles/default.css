@@ -46,9 +46,18 @@ body {
     background-color: #ffc5c5;
 }
 
+.sent-ack {
+    display: none;
+}
+
 #receive-div {
     background-color: #c0c0ff;
 }
+
+.sent-p label, .received-p label {
+    font-weight: bold;
+}
+
 
 #send-div-send-area {
     text-align: center;
